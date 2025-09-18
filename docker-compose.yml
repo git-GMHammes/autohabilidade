@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: docker.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Configurações básicas
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin123
+      
+      # Configurações de banco de dados (usando SQLite por padrão)
+      - DB_TYPE=sqlite
+      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
+      
+      # Configurações de timezone
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      
+      # Configurações de webhook
+      - WEBHOOK_URL=http://localhost:5678/
+      - N8N_PROTOCOL=http
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      
+      # Configurações de segurança
+      - N8N_SECURE_COOKIE=false
+      - N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN=true
+      
+      # Configurações de execução
+      - EXECUTIONS_PROCESS=main
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+      - EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true
+      
+      # Configurações de log
+      - N8N_LOG_LEVEL=info
+      - N8N_LOG_OUTPUT=console
+      
+    volumes:
+      # Volume principal do n8n (dados, workflows, credenciais)
+      - ./server_n8n/.n8n:/home/node/.n8n
+      
+      # Volume para arquivos compartilhados e automações
+      - ./server_n8n/shared:/home/node/shared
+      
+      # Volume para scripts customizados
+      - ./server_n8n/scripts:/home/node/scripts
+      
+      # Volume para logs
+      - ./server_n8n/logs:/var/log/n8n
+      
+    networks:
+      - n8n_network
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Opcional: PostgreSQL para ambiente de produção
+  postgres:
+    image: postgres:15-alpine
+    container_name: n8n_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=n8n
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=n8n_password
+      - POSTGRES_NON_ROOT_USER=n8n
+      - POSTGRES_NON_ROOT_PASSWORD=n8n_password
+    volumes:
+      - ./server_n8n/postgres_data:/var/lib/postgresql/data
+    networks:
+      - n8n_network
+    profiles:
+      - production
+
+  # Opcional: Redis para cache e queue (ambiente de produção)
+  redis:
+    image: redis:7-alpine
+    container_name: n8n_redis
+    restart: unless-stopped
+    command: redis-server --requirepass redis_password
+    volumes:
+      - ./server_n8n/redis_data:/data
+    networks:
+      - n8n_network
+    profiles:
+      - production
+
+networks:
+  n8n_network:
+    driver: bridge
+
+volumes:
+  n8n_data:
+    driver: local
