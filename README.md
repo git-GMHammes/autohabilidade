@@ -113,6 +113,7 @@ docker-compose build --no-cache n8n
 cd C:/laragon/www/autohabilidade
 
 # PARAR E REMOVER TUDO
+cd C:/laragon/www/autohabilidade
 docker stop $(docker ps -aq)
 docker rm -f $(docker ps -aq)
 docker rmi -f $(docker images -q)
@@ -120,10 +121,12 @@ docker volume prune -f
 docker volume rm autohabilidade_n8n_data -f
 docker network prune -f
 docker system prune -af
-
+ 
 # REBUILD COMPLETO
+cd C:/laragon/www/autohabilidade
 docker-compose build --no-cache
 docker-compose up -d
+ 
 ```
 
 ### Limpeza Seletiva
